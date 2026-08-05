@@ -1,0 +1,4 @@
+User-agent: *
+Allow: /
+
+Sitemap: https://mariano-aguero.github.io/agentic-payments-cheatsheet/sitemap.xml
