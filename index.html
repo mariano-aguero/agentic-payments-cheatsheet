@@ -1,0 +1,608 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Agentic Payments Cheatsheet: x402, facilitators, EIP-3009 and AP2</title>
+<meta name="description" content="A one-page field guide to the AI agent payment stack: the x402 protocol, payment facilitators, EIP-3009 and Permit2 settlement, CAIP-2 networks, and AP2 mandates.">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Zilla+Slab:wght@500;600;700&family=Public+Sans:wght@400;500;600&family=IBM+Plex+Mono:wght@400;500;600&display=swap" rel="stylesheet">
+<style>
+  :root {
+    --paper: #f2f4ec;
+    --paper-deep: #e9ecdf;
+    --rule: #d5dcc6;
+    --ink: #1e2a24;
+    --ink-soft: #4c5a52;
+    --oxblood: #93362b;
+    --ledger: #2e5e4e;
+    --card: #fbfcf7;
+    --mono: "IBM Plex Mono", ui-monospace, SFMono-Regular, Menlo, monospace;
+    --sans: "Public Sans", system-ui, -apple-system, sans-serif;
+    --slab: "Zilla Slab", Rockwell, serif;
+  }
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  html { scroll-behavior: smooth; }
+  @media (prefers-reduced-motion: reduce) { html { scroll-behavior: auto; } }
+  body {
+    font-family: var(--sans);
+    color: var(--ink);
+    background:
+      repeating-linear-gradient(to bottom, transparent 0, transparent 31px, rgba(46, 94, 78, 0.07) 31px, rgba(46, 94, 78, 0.07) 32px),
+      var(--paper);
+    line-height: 1.6;
+    font-size: 16px;
+  }
+  .wrap { max-width: 1060px; margin: 0 auto; padding: 0 24px; }
+
+  /* Masthead */
+  header.masthead {
+    border-bottom: 3px double var(--ink);
+    padding: 56px 0 32px;
+    position: relative;
+  }
+  .masthead .eyebrow {
+    font-family: var(--mono);
+    font-size: 12px;
+    letter-spacing: 0.14em;
+    text-transform: uppercase;
+    color: var(--ledger);
+    margin-bottom: 12px;
+  }
+  .masthead h1 {
+    font-family: var(--slab);
+    font-weight: 700;
+    font-size: clamp(34px, 6vw, 58px);
+    line-height: 1.05;
+    max-width: 14em;
+  }
+  .masthead h1 em { font-style: normal; color: var(--oxblood); }
+  .masthead p.lede {
+    max-width: 46em;
+    margin-top: 18px;
+    font-size: 17px;
+    color: var(--ink-soft);
+  }
+  .stamp {
+    position: absolute;
+    right: 24px;
+    top: 52px;
+    transform: rotate(6deg);
+    font-family: var(--mono);
+    font-weight: 600;
+    font-size: 13px;
+    letter-spacing: 0.1em;
+    color: var(--oxblood);
+    border: 2.5px solid var(--oxblood);
+    border-radius: 6px;
+    padding: 8px 14px;
+    text-transform: uppercase;
+    opacity: 0.85;
+    text-align: center;
+  }
+  .stamp small { display: block; font-size: 10px; letter-spacing: 0.2em; }
+  @media (max-width: 720px) { .stamp { position: static; display: inline-block; margin-top: 20px; transform: rotate(-2deg); } }
+
+  nav.toc {
+    font-family: var(--mono);
+    font-size: 13px;
+    padding: 14px 0;
+    border-bottom: 1px solid var(--rule);
+    display: flex;
+    flex-wrap: wrap;
+    gap: 6px 18px;
+  }
+  nav.toc a { color: var(--ledger); text-decoration: none; }
+  nav.toc a:hover, nav.toc a:focus-visible { color: var(--oxblood); text-decoration: underline; }
+
+  /* Sections as ledger entries */
+  section { padding: 44px 0 8px; }
+  .entry-head {
+    display: flex;
+    align-items: baseline;
+    gap: 14px;
+    border-bottom: 2px solid var(--ink);
+    padding-bottom: 8px;
+    margin-bottom: 22px;
+  }
+  .entry-head .no {
+    font-family: var(--mono);
+    font-size: 13px;
+    color: var(--paper);
+    background: var(--ledger);
+    padding: 2px 8px;
+    border-radius: 3px;
+    letter-spacing: 0.06em;
+  }
+  .entry-head h2 {
+    font-family: var(--slab);
+    font-weight: 600;
+    font-size: clamp(22px, 3.4vw, 30px);
+  }
+  section > .wrap > p, section .prose p { max-width: 52em; margin-bottom: 14px; }
+  .note { color: var(--ink-soft); font-size: 14.5px; max-width: 52em; }
+  a { color: var(--ledger); }
+  a:hover { color: var(--oxblood); }
+  code { font-family: var(--mono); font-size: 0.92em; background: var(--paper-deep); padding: 1px 5px; border-radius: 3px; }
+  strong { font-weight: 600; }
+
+  /* Wire capture (hero signature) */
+  .wire {
+    background: var(--card);
+    border: 1.5px solid var(--ink);
+    border-radius: 8px;
+    box-shadow: 4px 4px 0 rgba(30, 42, 36, 0.14);
+    margin: 34px 0 10px;
+    overflow: hidden;
+  }
+  .wire-title {
+    font-family: var(--mono);
+    font-size: 12px;
+    letter-spacing: 0.12em;
+    text-transform: uppercase;
+    background: var(--ink);
+    color: var(--paper);
+    padding: 8px 16px;
+    display: flex;
+    justify-content: space-between;
+    gap: 12px;
+    flex-wrap: wrap;
+  }
+  .wire-title .amt { color: #e8c9b8; }
+  .wire ol { list-style: none; }
+  .wire li {
+    display: grid;
+    grid-template-columns: 200px 1fr;
+    border-top: 1px solid var(--rule);
+  }
+  .wire li:first-child { border-top: 0; }
+  .wire .who {
+    font-family: var(--mono);
+    font-size: 12.5px;
+    padding: 14px 16px;
+    color: var(--ink-soft);
+    border-right: 1px solid var(--rule);
+    background: var(--paper-deep);
+  }
+  .wire .who b { color: var(--ink); display: block; font-weight: 600; }
+  .wire pre {
+    font-family: var(--mono);
+    font-size: 13px;
+    line-height: 1.55;
+    padding: 12px 16px;
+    overflow-x: auto;
+    white-space: pre;
+  }
+  .wire .c402 { color: var(--oxblood); font-weight: 600; }
+  .wire .c200 { color: var(--ledger); font-weight: 600; }
+  .wire .hdr { color: #6b4f9e; }
+  .wire .dim { color: var(--ink-soft); }
+  @media (max-width: 720px) {
+    .wire li { grid-template-columns: 1fr; }
+    .wire .who { border-right: 0; padding: 10px 16px 4px; }
+  }
+
+  /* Ledger table */
+  table {
+    width: 100%;
+    border-collapse: collapse;
+    background: var(--card);
+    border: 1.5px solid var(--ink);
+    font-size: 14.5px;
+    margin: 18px 0 26px;
+    box-shadow: 4px 4px 0 rgba(30, 42, 36, 0.14);
+  }
+  th {
+    font-family: var(--mono);
+    font-size: 12px;
+    text-transform: uppercase;
+    letter-spacing: 0.1em;
+    text-align: left;
+    background: var(--paper-deep);
+    border-bottom: 2px solid var(--ink);
+    padding: 10px 14px;
+  }
+  td { padding: 10px 14px; border-bottom: 1px solid var(--rule); vertical-align: top; }
+  tr:last-child td { border-bottom: 0; }
+  td code, th code { background: var(--paper); }
+  .tick { color: var(--ledger); font-weight: 600; }
+  .cross { color: var(--oxblood); font-weight: 600; }
+  .table-scroll { overflow-x: auto; }
+  .table-scroll table { min-width: 640px; }
+
+  /* Cards */
+  .cards { display: grid; grid-template-columns: repeat(auto-fit, minmax(280px, 1fr)); gap: 18px; margin: 20px 0 26px; }
+  .card {
+    background: var(--card);
+    border: 1.5px solid var(--ink);
+    border-radius: 8px;
+    padding: 18px 20px;
+    box-shadow: 4px 4px 0 rgba(30, 42, 36, 0.14);
+  }
+  .card h3 { font-family: var(--slab); font-size: 19px; margin-bottom: 6px; }
+  .card .tag {
+    font-family: var(--mono); font-size: 11px; letter-spacing: 0.12em;
+    text-transform: uppercase; color: var(--oxblood); display: block; margin-bottom: 8px;
+  }
+  .card p { font-size: 14.5px; color: var(--ink-soft); margin-bottom: 8px; }
+  .card ul { font-size: 14.5px; color: var(--ink-soft); padding-left: 18px; }
+  .card li { margin-bottom: 4px; }
+
+  /* Layer stack */
+  .layers { margin: 22px 0 26px; }
+  .layer {
+    display: grid;
+    grid-template-columns: 64px 220px 1fr;
+    gap: 0 18px;
+    background: var(--card);
+    border: 1.5px solid var(--ink);
+    border-top-width: 0;
+    padding: 14px 18px;
+    align-items: baseline;
+  }
+  .layer:first-child { border-top-width: 1.5px; border-radius: 8px 8px 0 0; }
+  .layer:last-child { border-radius: 0 0 8px 8px; }
+  .layer .lno { font-family: var(--mono); font-weight: 600; color: var(--oxblood); font-size: 15px; }
+  .layer .lname { font-family: var(--slab); font-weight: 600; font-size: 17px; }
+  .layer .ldesc { font-size: 14.5px; color: var(--ink-soft); }
+  @media (max-width: 720px) {
+    .layer { grid-template-columns: 48px 1fr; }
+    .layer .ldesc { grid-column: 1 / -1; padding-top: 4px; }
+  }
+
+  /* Code snippets */
+  pre.snippet {
+    background: #22302a;
+    color: #e8ede4;
+    font-family: var(--mono);
+    font-size: 13px;
+    line-height: 1.6;
+    padding: 18px 20px;
+    border-radius: 8px;
+    overflow-x: auto;
+    margin: 14px 0 24px;
+    border: 1.5px solid var(--ink);
+    box-shadow: 4px 4px 0 rgba(30, 42, 36, 0.14);
+  }
+  pre.snippet .cm { color: #9db3a6; }
+  pre.snippet .kw { color: #e0b089; }
+  pre.snippet .st { color: #b8d4a8; }
+
+  .callout {
+    border-left: 4px solid var(--oxblood);
+    background: var(--card);
+    border-top: 1px solid var(--rule);
+    border-right: 1px solid var(--rule);
+    border-bottom: 1px solid var(--rule);
+    padding: 14px 18px;
+    max-width: 52em;
+    margin: 18px 0 24px;
+    font-size: 15px;
+  }
+  .callout b { color: var(--oxblood); }
+
+  footer {
+    border-top: 3px double var(--ink);
+    margin-top: 48px;
+    padding: 26px 0 60px;
+    font-family: var(--mono);
+    font-size: 13px;
+    color: var(--ink-soft);
+    display: flex;
+    justify-content: space-between;
+    gap: 16px;
+    flex-wrap: wrap;
+  }
+  footer a { color: var(--ledger); }
+  :focus-visible { outline: 3px solid var(--oxblood); outline-offset: 2px; }
+</style>
+</head>
+<body>
+
+<header class="masthead">
+  <div class="wrap">
+    <p class="eyebrow">Field guide, one page, no fluff</p>
+    <h1>Agentic Payments <em>Cheatsheet</em></h1>
+    <p class="lede">How AI agents pay for things on the open web: the x402 protocol, payment facilitators, EIP-3009 settlement, and the mandate layer above them. Every table verified against the x402 v2 packages.</p>
+    <div class="stamp">HTTP 402<small>Payment Required</small></div>
+  </div>
+  <div class="wrap">
+    <nav class="toc" aria-label="Contents">
+      <a href="#flow">The flow</a>
+      <a href="#stack">The stack</a>
+      <a href="#roles">Roles</a>
+      <a href="#http">HTTP surface</a>
+      <a href="#schemes">Schemes</a>
+      <a href="#networks">Networks</a>
+      <a href="#settlement">Settlement</a>
+      <a href="#facilitators">Facilitators</a>
+      <a href="#mandates">Mandates</a>
+      <a href="#packages">Packages</a>
+      <a href="#snippets">Snippets</a>
+      <a href="#resources">Resources</a>
+    </nav>
+  </div>
+</header>
+
+<section id="flow">
+  <div class="wrap">
+    <div class="entry-head"><span class="no">01</span><h2>The whole protocol in one exchange</h2></div>
+    <p>x402 revives HTTP status code 402, reserved since the 1990s and never specified. A paid request is two round trips: the server quotes a price in a header, the client signs a payment authorization offline, and the retry carries it. No account, no API key, no session.</p>
+    <div class="wire">
+      <div class="wire-title"><span>wire capture: buying one API response</span><span class="amt">amount: 0.01 USDC, network: arbitrum</span></div>
+      <ol>
+        <li>
+          <div class="who"><b>1. Client asks</b>agent, browser, script</div>
+          <pre><span class="dim">&gt;</span> GET /api/insight HTTP/1.1
+<span class="dim">&gt;</span> Host: api.example.com</pre>
+        </li>
+        <li>
+          <div class="who"><b>2. Server quotes</b>resource server</div>
+          <pre><span class="dim">&lt;</span> <span class="c402">HTTP/1.1 402 Payment Required</span>
+<span class="dim">&lt;</span> <span class="hdr">payment-required:</span> eyJ4NDAyVmVyc2lvbiI6Mi4uLg  <span class="dim">(base64 JSON)</span>
+  <span class="dim">decoded: { accepts: [{ scheme: "exact", network: "eip155:42161",
+             asset: "0xaf88...5831", amount: "10000", payTo: "0xSeller" }] }</span></pre>
+        </li>
+        <li>
+          <div class="who"><b>3. Client pays</b>signs offline, retries</div>
+          <pre><span class="dim">&gt;</span> GET /api/insight HTTP/1.1
+<span class="dim">&gt;</span> <span class="hdr">payment:</span> eyJzaWduYXR1cmUiOiIweDMuLi4  <span class="dim">(base64 signed EIP-3009 auth)</span></pre>
+        </li>
+        <li>
+          <div class="who"><b>4. Server settles</b>facilitator verifies, submits tx, gas on the house</div>
+          <pre><span class="dim">&lt;</span> <span class="c200">HTTP/1.1 200 OK</span>
+<span class="dim">&lt;</span> <span class="hdr">payment-response:</span> eyJzdWNjZXNzIjp0cnVlLi4u  <span class="dim">(decoded: { success: true, transaction: "0xTxHash" })</span>
+<span class="dim">&lt;</span>
+<span class="dim">&lt;</span> { "insight": "the thing you paid for" }</pre>
+        </li>
+      </ol>
+    </div>
+    <p class="note">The client never sends an on-chain transaction and never spends gas. It signs a message; the settlement transaction is submitted by the facilitator.</p>
+  </div>
+</section>
+
+<section id="stack">
+  <div class="wrap">
+    <div class="entry-head"><span class="no">02</span><h2>The four-layer stack</h2></div>
+    <p>Each layer answers a different question. x402 is the protocol layer; it borrows the money and settlement layers from Ethereum, and delegates the permission question upward.</p>
+    <div class="layers">
+      <div class="layer"><span class="lno">L4</span><span class="lname">Authorization</span><span class="ldesc">Should this agent spend at all? AP2 mandates: verifiable credentials signed by a human ("up to $50, on travel, until Friday").</span></div>
+      <div class="layer"><span class="lno">L3</span><span class="lname">Protocol</span><span class="ldesc">How does a payment ride an HTTP request? x402: the 402 challenge, headers, schemes, and the facilitator role.</span></div>
+      <div class="layer"><span class="lno">L2</span><span class="lname">Settlement primitive</span><span class="ldesc">What moves the token? EIP-3009 transferWithAuthorization, or Permit2 for tokens without it. Signed offline, submitted by anyone.</span></div>
+      <div class="layer"><span class="lno">L1</span><span class="lname">Money</span><span class="ldesc">A stablecoin on an EVM chain. Usually USDC: 6 decimals, native EIP-3009 support on every chain Circle deploys to.</span></div>
+    </div>
+  </div>
+</section>
+
+<section id="roles">
+  <div class="wrap">
+    <div class="entry-head"><span class="no">03</span><h2>Three roles, three jobs</h2></div>
+    <div class="cards">
+      <div class="card">
+        <span class="tag">Buyer side</span>
+        <h3>Client</h3>
+        <p>Whoever wants the resource: an AI agent, a script, a browser wallet.</p>
+        <ul>
+          <li>Holds the token, nothing else</li>
+          <li>Signs the payment authorization offline</li>
+          <li>Retries the request with the <code>payment</code> header</li>
+          <li>Never touches gas</li>
+        </ul>
+      </div>
+      <div class="card">
+        <span class="tag">Seller side</span>
+        <h3>Resource server</h3>
+        <p>The API being paid for. Prices routes and delegates payment handling to middleware.</p>
+        <ul>
+          <li>Declares price, token, network, payTo per route</li>
+          <li>Challenges unpaid requests with 402</li>
+          <li>Runs the handler only after verification</li>
+          <li>Returns the settlement receipt header</li>
+        </ul>
+      </div>
+      <div class="card">
+        <span class="tag">Infrastructure</span>
+        <h3>Facilitator</h3>
+        <p>The courier. Verifies signed authorizations and submits the settlement transaction.</p>
+        <ul>
+          <li><code>verify</code>: signature, amount, expiry, balance</li>
+          <li><code>settle</code>: submits the tx, pays its gas</li>
+          <li><code>getSupported</code>: advertises schemes and networks</li>
+          <li>Never custodies funds; can only execute the exact signed transfer or nothing</li>
+        </ul>
+      </div>
+    </div>
+  </div>
+</section>
+
+<section id="http">
+  <div class="wrap">
+    <div class="entry-head"><span class="no">04</span><h2>HTTP surface</h2></div>
+    <p>All protocol data rides in three headers as base64-encoded JSON. Response bodies stay yours.</p>
+    <div class="table-scroll"><table>
+      <thead><tr><th>Header</th><th>Direction</th><th>Carries</th></tr></thead>
+      <tbody>
+        <tr><td><code>payment-required</code></td><td>server to client, on 402</td><td>The challenge: <code>accepts[]</code> with scheme, network (CAIP-2), asset address, atomic amount, payTo, timeout</td></tr>
+        <tr><td><code>payment</code></td><td>client to server, on retry</td><td>The signed payment payload for one of the accepted options</td></tr>
+        <tr><td><code>payment-response</code></td><td>server to client, on 200</td><td>The settlement receipt: <code>success</code>, <code>transaction</code> (tx hash), <code>network</code>, <code>payer</code></td></tr>
+      </tbody>
+    </table></div>
+    <div class="callout"><b>Gotcha:</b> the 402 response body is <code>{}</code>. Everything lives in the header. Decode with <code>decodePaymentRequiredHeader</code> and <code>decodePaymentResponseHeader</code> from <code>@x402/core/http</code>, never by hand.</div>
+    <div class="callout"><b>Amounts are atomic and stringly typed.</b> <code>"10000"</code> means 0.01 USDC (6 decimals). Parse to <code>bigint</code>, never to a float.</div>
+  </div>
+</section>
+
+<section id="schemes">
+  <div class="wrap">
+    <div class="entry-head"><span class="no">05</span><h2>Payment schemes</h2></div>
+    <div class="table-scroll"><table>
+      <thead><tr><th>Scheme</th><th>Model</th><th>Use when</th></tr></thead>
+      <tbody>
+        <tr><td><code>exact</code></td><td>Fixed price per request, settled in full</td><td>Pay-per-call APIs, downloads, one-shot purchases. The default; start here.</td></tr>
+        <tr><td><code>upto</code></td><td>Client authorizes a ceiling, server settles actual usage</td><td>Metered billing: tokens generated, compute time, partial settlement</td></tr>
+        <tr><td><code>batch-settlement</code></td><td>Many small payments settled together on-chain</td><td>High-frequency micropayments where per-tx gas would dominate</td></tr>
+        <tr><td><code>auth-capture</code></td><td>Authorize now, capture later</td><td>Reservation-style flows, familiar from card processing</td></tr>
+      </tbody>
+    </table></div>
+    <p class="note">All four ship in <code>@x402/evm</code> v2. Sellers can offer several options in one challenge via the <code>accepts</code> array.</p>
+  </div>
+</section>
+
+<section id="networks">
+  <div class="wrap">
+    <div class="entry-head"><span class="no">06</span><h2>Networks and tokens</h2></div>
+    <p>x402 v2 identifies networks with CAIP-2 ids: <code>namespace:reference</code>. For EVM chains that is <code>eip155:&lt;chainId&gt;</code>. Default stablecoins per network ship in <code>@x402/evm</code>, so sellers can price in dollar strings like <code>"$0.01"</code>.</p>
+    <div class="table-scroll"><table>
+      <thead><tr><th>Network</th><th>CAIP-2 id</th><th>USDC address</th><th>Hosted facilitator coverage</th></tr></thead>
+      <tbody>
+        <tr><td>Arbitrum One</td><td><code>eip155:42161</code></td><td><code>0xaf88d065e77c8cC2239327C5EDb3A432268e5831</code></td><td class="cross">not covered, self-host</td></tr>
+        <tr><td>Arbitrum Sepolia</td><td><code>eip155:421614</code></td><td><code>0x75faf114eafb1BDbe2F0316DF893fd58CE46AA4d</code></td><td class="cross">not covered, self-host</td></tr>
+        <tr><td>Base</td><td><code>eip155:8453</code></td><td><code>0x833589fCD6eDb6E08f4c7C32D4f71b54bdA02913</code></td><td class="tick">covered</td></tr>
+        <tr><td>Base Sepolia</td><td><code>eip155:84532</code></td><td><code>0x036CbD53842c5426634e7929541eC2318f3dCF7e</code></td><td class="tick">covered (x402.org)</td></tr>
+        <tr><td>Solana, Aptos, Stellar, XRPL...</td><td>various</td><td>per chain</td><td class="tick">partial, testnets mostly</td></tr>
+      </tbody>
+    </table></div>
+    <p class="note">Coverage changes; query it live: <code>GET https://x402.org/facilitator/supported</code>. Test USDC for any chain Circle supports: <a href="https://faucet.circle.com">faucet.circle.com</a>.</p>
+  </div>
+</section>
+
+<section id="settlement">
+  <div class="wrap">
+    <div class="entry-head"><span class="no">07</span><h2>Settlement primitives: who signs what</h2></div>
+    <div class="table-scroll"><table>
+      <thead><tr><th></th><th>EIP-3009</th><th>Permit2</th></tr></thead>
+      <tbody>
+        <tr><td><strong>What it is</strong></td><td><code>transferWithAuthorization</code>: transfer authorized by an offline signature, built into the token contract</td><td>Uniswap's universal approval contract; a signature spends a pre-granted allowance</td></tr>
+        <tr><td><strong>Token support</strong></td><td>Must be implemented by the token. USDC has it everywhere</td><td>Any ERC-20, after a one-time on-chain approval to the Permit2 contract</td></tr>
+        <tr><td><strong>Buyer setup</strong></td><td>None. Hold the token, sign, done</td><td>One approval transaction first (that one costs the buyer gas)</td></tr>
+        <tr><td><strong>Signature binds</strong></td><td>From, to, amount, validity window, nonce. Facilitator cannot alter any of it</td><td>Same idea via typed witness data</td></tr>
+        <tr><td><strong>Who pays settlement gas</strong></td><td>Whoever submits: the facilitator</td><td>Whoever submits: the facilitator</td></tr>
+      </tbody>
+    </table></div>
+    <div class="callout"><b>The gasless trick in one line:</b> the buyer signs a message; the facilitator submits the transaction and pays the gas. That is why an agent wallet needs USDC and nothing else.</div>
+  </div>
+</section>
+
+<section id="facilitators">
+  <div class="wrap">
+    <div class="entry-head"><span class="no">08</span><h2>Facilitators: hosted or your own</h2></div>
+    <div class="cards">
+      <div class="card">
+        <span class="tag">Hosted</span>
+        <h3>Someone runs it for you</h3>
+        <p>Point your middleware at a URL. Coinbase and the x402 Foundation operate public ones.</p>
+        <ul>
+          <li>Zero wallets to fund or monitor</li>
+          <li>Limited network coverage (check <code>/supported</code>)</li>
+          <li>A third party in your request path</li>
+        </ul>
+      </div>
+      <div class="card">
+        <span class="tag">Self-hosted</span>
+        <h3>Run it in your own process</h3>
+        <p>Implement <code>verify</code> / <code>settle</code> / <code>getSupported</code> against the chain directly, signing with your own wallet.</p>
+        <ul>
+          <li>Works on any EVM chain viem knows</li>
+          <li>No external dependency, no coverage gaps</li>
+          <li>Your settlement wallet needs native gas</li>
+          <li>Prebuilt: <a href="https://www.npmjs.com/package/@mariano-aguero/x402-self-facilitator"><code>@mariano-aguero/x402-self-facilitator</code></a></li>
+        </ul>
+      </div>
+    </div>
+    <p class="note">Trust model either way: the facilitator can execute the exact signed transfer or refuse to. It cannot redirect funds, change amounts, or spend anything the buyer did not sign.</p>
+  </div>
+</section>
+
+<section id="mandates">
+  <div class="wrap">
+    <div class="entry-head"><span class="no">09</span><h2>The layer above: AP2 and mandates</h2></div>
+    <p>x402 answers <em>how</em> an agent pays. It does not answer whether the agent <em>should</em>. That is the authorization layer, and the emerging standard there is AP2 (Agent Payments Protocol, led by Google with 60+ partners).</p>
+    <p>The core object is the <strong>mandate</strong>: a verifiable credential signed by the human principal that scopes what the agent may spend. An intent mandate captures the ask ("book me a flight under $300"); a cart mandate pins the exact purchase before payment. Payment execution then happens over rails like x402.</p>
+    <div class="callout"><b>Practical hierarchy of guards today:</b> client-side checks (allowlists, balance caps) are the floor; signed mandates verified by the seller are the standard forming; spend policies enforced on-chain by the wallet itself (smart accounts) are the strongest, since not even a compromised agent can exceed them.</div>
+  </div>
+</section>
+
+<section id="packages">
+  <div class="wrap">
+    <div class="entry-head"><span class="no">10</span><h2>The package ecosystem</h2></div>
+    <div class="table-scroll"><table>
+      <thead><tr><th>Package</th><th>Side</th><th>What it gives you</th></tr></thead>
+      <tbody>
+        <tr><td><code>@x402/core</code></td><td>all</td><td>Protocol types, header codecs, client and server runtimes, facilitator base</td></tr>
+        <tr><td><code>@x402/evm</code></td><td>all</td><td>EVM schemes (exact, upto, batch, auth-capture), signers, default stablecoins per network</td></tr>
+        <tr><td><code>@x402/fetch</code></td><td>client</td><td><code>wrapFetchWithPayment</code>: a fetch that pays 402 challenges automatically</td></tr>
+        <tr><td><code>@x402/hono</code>, <code>@x402/express</code>, <code>@x402/next</code></td><td>server</td><td>Official middleware adapters: price routes, challenge, verify, settle</td></tr>
+        <tr><td><code>@x402/svm</code></td><td>all</td><td>Solana implementation of the same protocol</td></tr>
+        <tr><td><a href="https://www.npmjs.com/package/@mariano-aguero/x402-self-facilitator"><code>@mariano-aguero/x402-self-facilitator</code></a></td><td>server</td><td>In-process facilitator for any EVM chain; no external service, gasless buyers</td></tr>
+        <tr><td><a href="https://www.npmjs.com/package/@mariano-aguero/anthropic-x402-tools"><code>@mariano-aguero/anthropic-x402-tools</code></a></td><td>client</td><td>Paying <code>fetch_url</code> and <code>check_balance</code> tools for Claude agents (Anthropic SDK tool runner)</td></tr>
+      </tbody>
+    </table></div>
+  </div>
+</section>
+
+<section id="snippets">
+  <div class="wrap">
+    <div class="entry-head"><span class="no">11</span><h2>Minimum viable seller and buyer</h2></div>
+    <p><strong>Seller</strong>: a Hono route priced at one cent, settling on Arbitrum with a self-hosted facilitator.</p>
+    <pre class="snippet"><span class="kw">import</span> { paymentMiddlewareFromConfig } <span class="kw">from</span> <span class="st">"@x402/hono"</span>;
+<span class="kw">import</span> { ExactEvmScheme } <span class="kw">from</span> <span class="st">"@x402/evm/exact/server"</span>;
+<span class="kw">import</span> { createSelfFacilitator } <span class="kw">from</span> <span class="st">"@mariano-aguero/x402-self-facilitator"</span>;
+
+<span class="kw">const</span> facilitator = createSelfFacilitator({ chain: arbitrum, account: sellerAccount });
+
+app.use(<span class="st">"/api/insight"</span>, paymentMiddlewareFromConfig(
+  { <span class="st">"GET /api/insight"</span>: { accepts: {
+      scheme: <span class="st">"exact"</span>, network: <span class="st">"eip155:42161"</span>,
+      payTo: sellerAccount.address, price: <span class="st">"$0.01"</span> } } },
+  facilitator,
+  [{ network: <span class="st">"eip155:42161"</span>, server: <span class="kw">new</span> ExactEvmScheme() }],
+));</pre>
+    <p><strong>Buyer</strong>: a Claude agent whose fetch tool pays challenges from its own wallet.</p>
+    <pre class="snippet"><span class="kw">import</span> Anthropic <span class="kw">from</span> <span class="st">"@anthropic-ai/sdk"</span>;
+<span class="kw">import</span> { createX402Tools } <span class="kw">from</span> <span class="st">"@mariano-aguero/anthropic-x402-tools"</span>;
+
+<span class="kw">const</span> { tools, payments } = createX402Tools({
+  account: agentAccount,           <span class="cm">// holds USDC, never needs gas</span>
+  chain: arbitrum,
+  token: { address: <span class="st">"0xaf88d065e77c8cC2239327C5EDb3A432268e5831"</span> },
+  apiBase: <span class="st">"https://api.example.com"</span>,
+});
+
+<span class="kw">const</span> message = <span class="kw">await</span> <span class="kw">new</span> Anthropic().beta.messages.toolRunner({
+  model: <span class="st">"claude-opus-5"</span>, max_tokens: <span class="kw">16000</span>, tools,
+  messages: [{ role: <span class="st">"user"</span>, content: <span class="st">"Buy me one premium insight."</span> }],
+});
+<span class="cm">// payments[] now holds { url, amount, txHash } per settled payment</span></pre>
+    <p class="note">Both snippets are condensed from a runnable end-to-end kit: <a href="https://github.com/mariano-aguero/arbitrum-agent-payments">arbitrum-agent-payments</a> (one command, real testnet settlement).</p>
+  </div>
+</section>
+
+<section id="resources">
+  <div class="wrap">
+    <div class="entry-head"><span class="no">12</span><h2>Resources</h2></div>
+    <div class="table-scroll"><table>
+      <thead><tr><th>What</th><th>Where</th></tr></thead>
+      <tbody>
+        <tr><td>x402 protocol site and spec</td><td><a href="https://x402.org">x402.org</a> · <a href="https://github.com/x402-foundation/x402">github.com/x402-foundation/x402</a></td></tr>
+        <tr><td>EIP-3009 (transferWithAuthorization)</td><td><a href="https://eips.ethereum.org/EIPS/eip-3009">eips.ethereum.org/EIPS/eip-3009</a></td></tr>
+        <tr><td>Permit2</td><td><a href="https://github.com/Uniswap/permit2">github.com/Uniswap/permit2</a></td></tr>
+        <tr><td>CAIP-2 chain ids</td><td><a href="https://chainagnostic.org/CAIPs/caip-2">chainagnostic.org/CAIPs/caip-2</a></td></tr>
+        <tr><td>AP2 (Agent Payments Protocol)</td><td><a href="https://ap2-protocol.org">ap2-protocol.org</a></td></tr>
+        <tr><td>Hosted facilitator coverage</td><td><a href="https://x402.org/facilitator/supported">x402.org/facilitator/supported</a></td></tr>
+        <tr><td>Test USDC faucet</td><td><a href="https://faucet.circle.com">faucet.circle.com</a></td></tr>
+        <tr><td>Runnable end-to-end example</td><td><a href="https://github.com/mariano-aguero/arbitrum-agent-payments">arbitrum-agent-payments</a></td></tr>
+      </tbody>
+    </table></div>
+  </div>
+</section>
+
+<footer>
+  <div class="wrap" style="display:flex; justify-content:space-between; gap:16px; flex-wrap:wrap;">
+    <span>MIT · <a href="https://github.com/mariano-aguero/agentic-payments-cheatsheet">source on GitHub</a></span>
+    <span>by <a href="https://github.com/mariano-aguero">mariano-aguero</a> · corrections welcome via PR</span>
+  </div>
+</footer>
+
+</body>
+</html>
