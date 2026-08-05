@@ -1,0 +1,261 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Production Integration Guide: adding x402 payments to an agent backend</title>
+<meta name="description" content="Battle-tested patterns for wiring x402 payments into an existing production system: the paying agent side, the paid API side, failure semantics, custody, idempotency and observability.">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Zilla+Slab:wght@500;600;700&family=Public+Sans:wght@400;500;600&family=IBM+Plex+Mono:wght@400;500;600&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="style.css">
+</head>
+<body>
+
+<header class="masthead">
+  <div class="wrap">
+    <p class="eyebrow"><a href="./">Agentic Payments Cheatsheet</a> · part two</p>
+    <h1>Production <em>Integration</em> Guide</h1>
+    <p class="lede">You already run an agent, or an API, or both. This page is the wiring diagram: where payments plug into an existing production system, and the failure semantics, custody, idempotency and observability work that separates a demo from something you can leave running. Distilled from production deployments; every pattern here has paged someone.</p>
+    <div class="stamp">Field<small>Tested</small></div>
+  </div>
+  <div class="wrap">
+    <nav class="toc" aria-label="Contents">
+      <a href="#halves">Two halves</a>
+      <a href="#loop">Agent loop</a>
+      <a href="#rails">Paying tool rails</a>
+      <a href="#custody">Custody</a>
+      <a href="#metadata">Pricing as metadata</a>
+      <a href="#pipeline">The guard pipeline</a>
+      <a href="#failure">Failure semantics</a>
+      <a href="#observability">Observability</a>
+      <a href="#hardening">Hardening checklist</a>
+      <a href="#discovery">Discovery</a>
+    </nav>
+  </div>
+</header>
+
+<section id="halves">
+  <div class="wrap">
+    <div class="entry-head"><span class="no">01</span><h2>Decide which half you are</h2></div>
+    <p>Every integration is one of two jobs, and most teams eventually do both. Naming yours first keeps the scope honest.</p>
+    <div class="cards">
+      <div class="card">
+        <span class="tag">Buyer side</span>
+        <h3>Your agent pays</h3>
+        <p>You run an agent (a tool loop over an LLM) and want it to buy things: paid APIs, data, other agents' services.</p>
+        <ul>
+          <li>Touches: tool registry, agent loop budgets, a wallet</li>
+          <li>New risks: spend without consent, prompt-injected payments</li>
+          <li>Sections 02 to 04</li>
+        </ul>
+      </div>
+      <div class="card">
+        <span class="tag">Seller side</span>
+        <h3>Your API charges</h3>
+        <p>You run an HTTP API and want agents to pay per call, without accounts or API-key onboarding.</p>
+        <ul>
+          <li>Touches: middleware or guards, a settlement wallet, ops</li>
+          <li>New risks: replay, facilitator outages, revenue blind spots</li>
+          <li>Sections 05 to 08</li>
+        </ul>
+      </div>
+    </div>
+    <p class="note">The protocol basics (headers, schemes, facilitators, EIP-3009) live in <a href="./">part one</a>. This page assumes them.</p>
+  </div>
+</section>
+
+<section id="loop">
+  <div class="wrap">
+    <div class="entry-head"><span class="no">02</span><h2>Buyer: where payment plugs into the agent loop</h2></div>
+    <p>A production agent loop usually already has two structures that payments slot straight into: a <strong>conditional tool registry</strong> and <strong>budget gates checked before every model call</strong>. Payment capability is one more gated tool plus one more budget dimension, not a rewrite.</p>
+    <pre class="snippet"><span class="cm">// The registry you probably already have: capabilities gated by config</span>
+<span class="kw">function</span> buildToolSet(opts: ToolSetOptions): ToolSet {
+  <span class="kw">const</span> tools = [...BASE_TOOLS];
+  <span class="kw">if</span> (opts.paymentsEnabled) tools.push(payingFetchTool, checkBalanceTool);
+  <span class="kw">return</span> toRegistry(tools);
+}
+
+<span class="cm">// The budget gates you probably already have, plus one new dimension.</span>
+<span class="cm">// All checked BEFORE the call, all abort cleanly with partial results.</span>
+<span class="kw">while</span> (<span class="kw">true</span>) {
+  <span class="kw">if</span> (turn >= cfg.maxTurns)                 { abort(<span class="st">"max-turns"</span>);  <span class="kw">break</span>; }
+  <span class="kw">if</span> (llmCostUsd >= cfg.maxLlmCostUsd)      { abort(<span class="st">"max-llm-usd"</span>); <span class="kw">break</span>; }
+  <span class="kw">if</span> (spendLedger.total >= cfg.maxSpendUsd) { abort(<span class="st">"max-spend"</span>);  <span class="kw">break</span>; }  <span class="cm">// new</span>
+  <span class="cm">// ... call the model, dispatch tools, accumulate usage and spend</span>
+}</pre>
+    <p>Two details make this work in practice:</p>
+    <p><strong>Meter LLM cost and payment spend in the same place.</strong> If your loop already tracks token usage per turn into a running USD total, on-chain spend is just a second ledger next to it, checked by the same gate logic. An agent that knows "I have $0.40 of budget left" across both dimensions can decide whether a $0.05 API call is worth it.</p>
+    <p><strong>Accumulate settlements in the run context, not the return value.</strong> Production loops abort: max turns, timeouts, LLM errors. If payment records live in a mutable context object that tools push into, an aborted run still leaves a complete audit trail of what was actually spent. A return-value design loses exactly the records you need most.</p>
+  </div>
+</section>
+
+<section id="rails">
+  <div class="wrap">
+    <div class="entry-head"><span class="no">03</span><h2>Buyer: rails for a paying tool</h2></div>
+    <p>The model decides <em>when</em> to call the paying tool; your code decides <em>whether the call is allowed to cost money</em>. Treat every tool input as untrusted, because via prompt injection it is: any content the agent reads (a web page, a PR description, another agent's message) can try to steer it into paying the wrong party.</p>
+    <div class="table-scroll"><table>
+      <thead><tr><th>Rail</th><th>Rule</th><th>Why</th></tr></thead>
+      <tbody>
+        <tr><td>Origin allowlist</td><td>Compare parsed origins, never string prefixes. <code>host:4021</code> and <code>host:40210</code> share a prefix; <code>host:4021@evil.com</code> parses the attacker as the host</td><td>Injected URLs are the cheapest attack. The tool must be unable to pay outside the origins you configured</td></tr>
+        <tr><td>Price ceiling per call</td><td>Read the 402 challenge, compare the amount against a configured maximum before signing</td><td>A malicious seller can quote any price; the signature is what commits you</td></tr>
+        <tr><td>Refuse unreadable challenges</td><td>A 402 whose payment header will not decode is an error, not a free pass</td><td>Defaulting a broken challenge to amount zero silently disables your affordability check</td></tr>
+        <tr><td>No dynamic recipients</td><td>The model never supplies wallet addresses. <code>payTo</code> comes from the challenge; where the money can go is bounded by the origin allowlist</td><td>Address-shaped strings in model output are radioactive</td></tr>
+        <tr><td>Errors are results, not exceptions</td><td>Return <code>{ ok: false, error }</code> and surface it as an <code>is_error</code> tool result</td><td>The model can react in-loop (retry, report, give up); a thrown exception kills the run and loses context</td></tr>
+        <tr><td>Idempotency on retries</td><td>If your loop retries failed tools, carry an idempotency key so a flaky network cannot double-pay</td><td>The expensive version of at-least-once delivery</td></tr>
+      </tbody>
+    </table></div>
+    <div class="callout"><b>The one-line threat model:</b> your wallet signs whatever your code asks it to. Every rail above exists so that the path from "text the model read" to "signature produced" has a policy checkpoint your code controls.</div>
+  </div>
+</section>
+
+<section id="custody">
+  <div class="wrap">
+    <div class="entry-head"><span class="no">04</span><h2>Buyer: the custody ladder</h2></div>
+    <p>Where the agent's private key lives determines your real blast radius. Climb the ladder as the money grows.</p>
+    <div class="layers">
+      <div class="layer"><span class="lno">C1</span><span class="lname">Env-var key</span><span class="ldesc">A raw private key in an environment variable. Fine for testnets and demos. Anyone with pod access owns the wallet; rotation is a redeploy.</span></div>
+      <div class="layer"><span class="lno">C2</span><span class="lname">Scoped hot wallet</span><span class="ldesc">Still a local key, but per agent, funded just-in-time with small amounts, refilled by policy from a treasury. Blast radius is the float, not the treasury.</span></div>
+      <div class="layer"><span class="lno">C3</span><span class="lname">Remote signer</span><span class="ldesc">KMS, HSM or MPC service behind a narrow signTypedData port. The key never enters the agent process; signing requests are logged and rate-limited centrally.</span></div>
+      <div class="layer"><span class="lno">C4</span><span class="lname">Smart account with on-chain policy</span><span class="ldesc">The wallet itself enforces budgets, allowlists and per-tx caps on chain. Even a fully compromised agent cannot exceed policy. The strongest rung, and where the ecosystem is heading.</span></div>
+    </div>
+    <p class="note">Design your signing behind an interface from day one (<code>sign(typedData)</code> is the whole surface EIP-3009 needs). Then climbing the ladder is a config change, not a refactor.</p>
+  </div>
+</section>
+
+<section id="metadata">
+  <div class="wrap">
+    <div class="entry-head"><span class="no">05</span><h2>Seller: pricing is route metadata, not handler code</h2></div>
+    <p>The cleanest production pattern: payment is declared <em>on</em> the route and enforced by a guard or middleware <em>before</em> the handler. Handlers never know they are paid. A route without the metadata is free and completely untouched, which makes rollout incremental and rollback instant.</p>
+    <pre class="snippet"><span class="cm">// NestJS flavor: a decorator carrying metadata a global guard reads.</span>
+<span class="cm">// Express/Hono flavor: the same object passed to route middleware.</span>
+@Paid({
+  scheme: [<span class="st">"exact"</span>],
+  amount: <span class="st">"1000"</span>,                  <span class="cm">// base units, decimal string, never a float</span>
+  asset: <span class="st">"USDC"</span>,
+  network: <span class="st">"eip155:42161"</span>,        <span class="cm">// CAIP-2, so chain identity is unambiguous</span>
+  discovery: {                      <span class="cm">// machine-readable catalog metadata</span>
+    serviceName: <span class="st">"Example lookup"</span>,
+    description: <span class="st">"What this endpoint returns and for whom"</span>,
+    inputExample:  { <span class="cm">/* representative values; these appear in public catalogs */</span> },
+    outputExample: { <span class="cm">/* ... */</span> },
+  },
+})
+@Get(<span class="st">"lookup/:id"</span>)
+handler() { <span class="cm">/* pure business logic, no payment awareness */</span> }</pre>
+    <p>Two production refinements worth copying:</p>
+    <p><strong>A per-environment network override.</strong> Prices and networks are baked into source, but one env var globally rewrites the chain, so staging settles on a testnet without touching any route definition.</p>
+    <p><strong>Bypass paths as first-class config.</strong> Internal services and dashboards skip payment via an API-key allowlist; callers who bring their own upstream resources (nothing for you to monetize) skip it via a declared bypass condition. Both are explicit metadata, not special cases buried in handlers.</p>
+  </div>
+</section>
+
+<section id="pipeline">
+  <div class="wrap">
+    <div class="entry-head"><span class="no">06</span><h2>Seller: the guard pipeline, in order</h2></div>
+    <p>Order matters: every step exists to keep a cheaper check in front of a more expensive one, and the two cache checks exist to keep you from settling the same payment twice. This sequence is the most transferable artifact on this page.</p>
+    <div class="layers">
+      <div class="layer"><span class="lno">1</span><span class="lname">Metadata check</span><span class="ldesc">No pricing metadata on the route: free, return immediately. Zero overhead for unpaid routes.</span></div>
+      <div class="layer"><span class="lno">2</span><span class="lname">Internal bypass</span><span class="ldesc">API-key allowlist for your own services. Compare in constant time: a Set lookup with early return leaks valid-key prefixes through response timing.</span></div>
+      <div class="layer"><span class="lno">3</span><span class="lname">Cost-basis bypass</span><span class="ldesc">Caller brought their own upstream resource: nothing to monetize, wave through.</span></div>
+      <div class="layer"><span class="lno">4</span><span class="lname">Proof extraction</span><span class="ldesc">First scheme adapter that recognizes the request's headers wins. No proof at all: emit a 402 advertising every scheme you accept, so a fresh client can pick one.</span></div>
+      <div class="layer"><span class="lno">5</span><span class="lname">Blocklist</span><span class="ldesc">Known-bad payer addresses short-circuit here, before you spend a facilitator round trip on them.</span></div>
+      <div class="layer"><span class="lno">6</span><span class="lname">Idempotency cache</span><span class="ldesc">Key by payer plus idempotency key, never the key alone, or a stranger who guesses a key replays someone else's settlement. If the payer cannot be decoded, skip the cache and re-verify: conservative beats clever.</span></div>
+      <div class="layer"><span class="lno">7</span><span class="lname">Verify and settle</span><span class="ldesc">The facilitator call, wrapped in the failure semantics of section 07, with latency and outcome metrics on every path.</span></div>
+      <div class="layer"><span class="lno">8</span><span class="lname">Audit write</span><span class="ldesc">Fire-and-forget, deliberately not awaited: a degraded audit database must not stall the request path. Swallow duplicate-key errors.</span></div>
+      <div class="layer"><span class="lno">9</span><span class="lname">Attach receipt</span><span class="ldesc">Put the settlement on the request object and in the response header, so handlers and clients both see what was paid.</span></div>
+    </div>
+  </div>
+</section>
+
+<section id="failure">
+  <div class="wrap">
+    <div class="entry-head"><span class="no">07</span><h2>Seller: failure semantics that autonomous payers can act on</h2></div>
+    <p>Your callers are retry loops without humans in them. Whether a failure is worth retrying is the single most important bit you return, so make it explicit: every verification and settlement result carries a <code>retriable</code> flag, and the flag decides the status code.</p>
+    <div class="table-scroll"><table>
+      <thead><tr><th>What happened</th><th><code>retriable</code></th><th>Return</th><th>The agent should</th></tr></thead>
+      <tbody>
+        <tr><td>Bad proof: invalid signature, expired, wrong amount, already used</td><td><code>false</code></td><td class="cross">402 again, with the reason attached to the failing scheme</td><td>Sign a fresh payment or give up; retrying the same proof is pointless</td></tr>
+        <tr><td>Facilitator 5xx, timeout, circuit open</td><td><code>true</code></td><td class="cross">503</td><td>Back off and retry the same proof; it may be perfectly valid</td></tr>
+        <tr><td>Verified and settled</td><td></td><td class="tick">200 plus receipt header</td><td>Record the tx hash, move on</td></tr>
+      </tbody>
+    </table></div>
+    <p>Around the facilitator call itself, three cheap pieces of resilience pay for themselves the first bad day:</p>
+    <p><strong>A circuit breaker.</strong> A flapping facilitator plus autonomous retry loops equals a self-inflicted flood. A simple half-open breaker (sliding failure window, cooldown, one trial call) is under a hundred lines with no dependency and turns an outage into fast, honest 503s.</p>
+    <p><strong>A bootstrap health check.</strong> Probe the facilitator when the service starts. A misconfigured URL should fail a deploy, not the first paying customer.</p>
+    <p><strong>Fail fast on config.</strong> If the facilitator URL implies credentials you were not given, throw at construction with a message naming the exact env vars. And normalize PEM keys read from env: secret managers and container runtimes mangle newlines, and the resulting error at request time is unreadable.</p>
+  </div>
+</section>
+
+<section id="observability">
+  <div class="wrap">
+    <div class="entry-head"><span class="no">08</span><h2>Observability: the counters that answer real questions</h2></div>
+    <p>Payment bugs present as revenue anomalies, and revenue anomalies get escalated. These labels answer the questions you will actually be asked.</p>
+    <div class="table-scroll"><table>
+      <thead><tr><th>Metric</th><th>Labels</th><th>Question it answers</th></tr></thead>
+      <tbody>
+        <tr><td><code>payments_402_issued</code></td><td>route, scheme</td><td>How much demand hits the paywall?</td></tr>
+        <tr><td><code>payments_settled</code></td><td>route, scheme, network</td><td>Revenue, live, per endpoint</td></tr>
+        <tr><td><code>payments_invalid_proof</code></td><td>scheme, reason</td><td>Broken client in the wild, or an attack?</td></tr>
+        <tr><td><code>payments_facilitator_error</code></td><td>retriable</td><td>Is settlement infrastructure the bottleneck?</td></tr>
+        <tr><td><code>payments_idempotency_hit</code></td><td>scheme</td><td>How often do retries almost double-charge?</td></tr>
+        <tr><td><code>payments_bypass</code></td><td>reason</td><td>How much traffic rides each free path?</td></tr>
+        <tr><td><code>settlement_latency</code> (histogram)</td><td>scheme</td><td>What does paying add to p95?</td></tr>
+      </tbody>
+    </table></div>
+    <p class="note">Plus an append-only audit row per settlement (payer, recipient, amount, asset, network, tx reference, route) and a trace span per facilitator call. On the buyer side, mirror it: one structured log line per payment with amount, tx hash and the run that spent it.</p>
+  </div>
+</section>
+
+<section id="hardening">
+  <div class="wrap">
+    <div class="entry-head"><span class="no">09</span><h2>The hardening checklist</h2></div>
+    <p>The gaps that separate a working integration from one you can leave alone. Each of these is invisible in a demo and expensive in production.</p>
+    <div class="table-scroll"><table>
+      <thead><tr><th>Gap</th><th>Failure mode if skipped</th><th>Fix</th></tr></thead>
+      <tbody>
+        <tr><td>Idempotency and replay state in per-pod memory</td><td>Multi-replica deploys re-settle payments a sibling pod already saw; the on-chain nonce becomes your only backstop</td><td>Move both caches to a durable shared store (Redis or a DB table with a unique constraint)</td></tr>
+        <tr><td>No durable spend ledger</td><td>A crash mid-run loses the record of in-flight payments; reconciliation becomes archaeology</td><td>Write the ledger row before settling, mark it settled after; the chain is the source of truth you reconcile against</td></tr>
+        <tr><td>Raw keys in env vars, forever</td><td>Any pod compromise is a full wallet compromise</td><td>Climb the custody ladder (section 04); at minimum, scope and cap hot wallets</td></tr>
+        <tr><td>Fiat billing and per-call crypto revenue never reconciled</td><td>Two revenue systems, two dashboards, and finance questions nobody can answer</td><td>Land both in one revenue table keyed by customer, whatever the rail</td></tr>
+        <tr><td>Payment context threaded by hand</td><td>Payer identity and remaining budget prop-drilled through every layer, or worse, global</td><td>Per-request context via AsyncLocalStorage, same as you already scope tenants and API keys</td></tr>
+        <tr><td>No queue for agent work</td><td>Webhook handlers doing multi-minute paid agent runs inline, timing out with money in flight</td><td>A job queue with idempotent handlers; payments make at-least-once delivery a financial property</td></tr>
+        <tr><td>Rate limiting only at the app</td><td>The paywall itself becomes a spend-amplification target</td><td>Limit at the gateway or CDN; keep an in-process bucket as defense in depth, with a cap on tracked keys</td></tr>
+      </tbody>
+    </table></div>
+  </div>
+</section>
+
+<section id="discovery">
+  <div class="wrap">
+    <div class="entry-head"><span class="no">10</span><h2>Discovery: let agents find you and behave</h2></div>
+    <p>An agent-payable API that agents cannot discover earns nothing. Three artifacts, all cheap to serve:</p>
+    <div class="cards">
+      <div class="card">
+        <span class="tag">Free endpoint</span>
+        <h3>A pricing catalog</h3>
+        <p>One unpaid route returning every paid route with scheme, amount, asset, CAIP-2 network and recipient, from the same source of truth as the guards. Agents read prices before paying.</p>
+      </div>
+      <div class="card">
+        <span class="tag">In the 402</span>
+        <h3>Catalog metadata</h3>
+        <p>Ship discovery metadata (service name, description, input and output examples) on the challenge itself, so indexers and bazaars can catalog the route after their first settlement.</p>
+      </div>
+      <div class="card">
+        <span class="tag">At the root</span>
+        <h3>A capability manifest</h3>
+        <p>A machine-readable page (<code>/skill.md</code> or similar) stating what the service does, when not to use it, the price table, and etiquette: honor <code>Retry-After</code>, do not re-buy cacheable data, cap payment retries.</p>
+      </div>
+    </div>
+    <p class="note">Etiquette rules in the manifest are not decoration: autonomous callers actually follow them, and they are your first line of defense against well-meaning retry storms.</p>
+  </div>
+</section>
+
+<footer>
+  <div class="wrap" style="display:flex; justify-content:space-between; gap:16px; flex-wrap:wrap;">
+    <span>MIT · <a href="https://github.com/mariano-aguero/agentic-payments-cheatsheet">source on GitHub</a> · <a href="./">back to part one</a></span>
+    <span>by <a href="https://github.com/mariano-aguero">mariano-aguero</a> · corrections welcome via PR</span>
+  </div>
+</footer>
+
+</body>
+</html>

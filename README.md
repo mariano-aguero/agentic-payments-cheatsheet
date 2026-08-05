@@ -7,6 +7,11 @@ A one-page field guide to how AI agents pay for things on the open web: the x402
 
 **Read it here: [mariano-aguero.github.io/agentic-payments-cheatsheet](https://mariano-aguero.github.io/agentic-payments-cheatsheet/)**
 
+The guide has two parts:
+
+1. **[The protocol](https://mariano-aguero.github.io/agentic-payments-cheatsheet/)**: the x402 flow, stack, roles, headers, schemes, networks, settlement and mandates
+2. **[Production integration](https://mariano-aguero.github.io/agentic-payments-cheatsheet/integration.html)**: wiring payments into an existing agent backend, buyer and seller side, with failure semantics, custody, idempotency and observability
+
 ## What's inside
 
 - The whole protocol in one annotated HTTP exchange
