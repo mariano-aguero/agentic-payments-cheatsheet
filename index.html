@@ -106,7 +106,7 @@
 
     <div class="diagram">
       <div class="sq-title">the same exchange, behind the wire: who talks to whom</div>
-      <svg viewBox="0 0 920 560" role="img" aria-labelledby="sq-t sq-d">
+      <svg viewBox="0 0 920 572" role="img" aria-labelledby="sq-t sq-d">
         <title id="sq-t">Sequence diagram of one x402 payment</title>
         <desc id="sq-d">The agent requests, the API answers 402 with a quote, the agent signs an EIP-3009 authorization offline and retries, the API asks the facilitator to verify, runs its handler, then the facilitator settles on chain paying the gas, and the API returns 200 with the receipt.</desc>
         <defs>
@@ -135,58 +135,80 @@
         </g>
 
         <!-- lifelines -->
-        <line class="sq-life" x1="105" y1="76" x2="105" y2="530"></line>
-        <line class="sq-life" x1="365" y1="76" x2="365" y2="530"></line>
-        <line class="sq-life" x1="630" y1="76" x2="630" y2="530"></line>
-        <line class="sq-life" x1="830" y1="76" x2="830" y2="530"></line>
+        <line class="sq-life" x1="105" y1="76" x2="105" y2="542"></line>
+        <line class="sq-life" x1="365" y1="76" x2="365" y2="542"></line>
+        <line class="sq-life" x1="630" y1="76" x2="630" y2="542"></line>
+        <line class="sq-life" x1="830" y1="76" x2="830" y2="542"></line>
 
         <!-- 1 request -->
         <line class="sq-arrow" x1="105" y1="118" x2="360" y2="118" marker-end="url(#ah)"></line>
         <text class="sq-msg" x="232" y="108" text-anchor="middle">GET /api/insight</text>
+        <circle class="sq-num-box" cx="122" cy="118" r="9"></circle>
+        <text class="sq-num" x="122" y="118" text-anchor="middle" dy=".32em">1</text>
 
         <!-- 2 quote -->
         <line class="sq-arrow pay" x1="365" y1="160" x2="110" y2="160" marker-end="url(#ah)"></line>
         <text class="sq-msg pay" x="232" y="150" text-anchor="middle">402 + payment-required</text>
         <text class="sq-msg dim" x="232" y="176" text-anchor="middle">the quote: token, amount, payTo</text>
+        <circle class="sq-num-box" cx="348" cy="160" r="9"></circle>
+        <text class="sq-num" x="348" y="160" text-anchor="middle" dy=".32em">2</text>
 
         <!-- 3 offline signature (self note) -->
         <rect class="sq-note-box" x="38" y="198" width="220" height="40" rx="5"></rect>
         <text class="sq-msg" x="148" y="215" text-anchor="middle">signs EIP-3009 authorization</text>
         <text class="sq-msg dim" x="148" y="231" text-anchor="middle">offline, zero gas</text>
+        <circle class="sq-num-box" cx="38" cy="198" r="9"></circle>
+        <text class="sq-num" x="38" y="198" text-anchor="middle" dy=".32em">3</text>
 
         <!-- 4 retry -->
         <line class="sq-arrow" x1="105" y1="268" x2="360" y2="268" marker-end="url(#ah)"></line>
         <text class="sq-msg" x="232" y="258" text-anchor="middle">GET again + payment header</text>
+        <circle class="sq-num-box" cx="122" cy="268" r="9"></circle>
+        <text class="sq-num" x="122" y="268" text-anchor="middle" dy=".32em">4</text>
 
         <!-- 5 verify -->
         <line class="sq-arrow" x1="365" y1="308" x2="625" y2="308" marker-end="url(#ah)"></line>
         <text class="sq-msg" x="497" y="298" text-anchor="middle">verify(payload, requirements)</text>
+        <circle class="sq-num-box" cx="382" cy="308" r="9"></circle>
+        <text class="sq-num" x="382" y="308" text-anchor="middle" dy=".32em">5</text>
 
         <!-- 6 valid -->
         <line class="sq-arrow ok" x1="630" y1="344" x2="370" y2="344" marker-end="url(#ah)"></line>
         <text class="sq-msg ok" x="497" y="334" text-anchor="middle">isValid: true</text>
+        <circle class="sq-num-box" cx="613" cy="344" r="9"></circle>
+        <text class="sq-num" x="613" y="344" text-anchor="middle" dy=".32em">6</text>
 
         <!-- 7 handler (self note) -->
         <rect class="sq-note-box" x="298" y="364" width="134" height="26" rx="5"></rect>
         <text class="sq-msg" x="365" y="381" text-anchor="middle">handler runs</text>
+        <circle class="sq-num-box" cx="298" cy="364" r="9"></circle>
+        <text class="sq-num" x="298" y="364" text-anchor="middle" dy=".32em">7</text>
 
         <!-- 8 settle -->
         <line class="sq-arrow" x1="365" y1="416" x2="625" y2="416" marker-end="url(#ah)"></line>
         <text class="sq-msg" x="497" y="406" text-anchor="middle">settle(payload, requirements)</text>
+        <circle class="sq-num-box" cx="382" cy="416" r="9"></circle>
+        <text class="sq-num" x="382" y="416" text-anchor="middle" dy=".32em">8</text>
 
         <!-- 9 on-chain tx -->
         <line class="sq-arrow pay" x1="630" y1="452" x2="825" y2="452" marker-end="url(#ah)"></line>
         <text class="sq-msg pay" x="729" y="442" text-anchor="middle">transferWithAuthorization</text>
         <text class="sq-gas" x="729" y="468" text-anchor="middle">gas paid here</text>
+        <circle class="sq-num-box" cx="647" cy="452" r="9"></circle>
+        <text class="sq-num" x="647" y="452" text-anchor="middle" dy=".32em">9</text>
 
         <!-- 10 tx hash back -->
-        <line class="sq-arrow ok" x1="830" y1="490" x2="635" y2="490" marker-end="url(#ah)"></line>
-        <text class="sq-msg ok" x="729" y="482" text-anchor="middle">tx hash</text>
+        <line class="sq-arrow ok" x1="830" y1="502" x2="635" y2="502" marker-end="url(#ah)"></line>
+        <text class="sq-msg ok" x="729" y="494" text-anchor="middle">tx hash</text>
+        <circle class="sq-num-box" cx="813" cy="502" r="9"></circle>
+        <text class="sq-num" x="813" y="502" text-anchor="middle" dy=".32em">10</text>
 
         <!-- 11 receipt -->
-        <line class="sq-arrow ok" x1="365" y1="522" x2="110" y2="522" marker-end="url(#ah)"></line>
-        <text class="sq-msg ok" x="232" y="512" text-anchor="middle">200 + payment-response</text>
-        <text class="sq-msg dim" x="232" y="538" text-anchor="middle">data + settlement receipt</text>
+        <line class="sq-arrow ok" x1="365" y1="534" x2="110" y2="534" marker-end="url(#ah)"></line>
+        <text class="sq-msg ok" x="232" y="524" text-anchor="middle">200 + payment-response</text>
+        <text class="sq-msg dim" x="232" y="550" text-anchor="middle">data + settlement receipt</text>
+        <circle class="sq-num-box" cx="348" cy="534" r="9"></circle>
+        <text class="sq-num" x="348" y="534" text-anchor="middle" dy=".32em">11</text>
       </svg>
     </div>
     <p class="note">Steps 5, 6 and 8 are in-process calls when the facilitator is embedded in the server, or HTTPS calls when it is hosted. Either way the wire between agent and API is identical.</p>

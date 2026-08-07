@@ -303,6 +303,8 @@
   .sq-msg.dim { fill: var(--ink-soft); }
   .sq-note-box { fill: var(--paper); stroke: var(--ink-soft); stroke-width: 1; stroke-dasharray: 3 3; }
   .sq-gas { font-family: var(--mono); font-size: 11px; fill: var(--oxblood); font-weight: 600; }
+  .sq-num-box { fill: var(--paper); stroke: var(--ink-soft); stroke-width: 1; }
+  .sq-num { font-family: var(--mono); font-size: 10px; font-weight: 600; fill: var(--ink-soft); }
 
   footer {
     border-top: 3px double var(--ink);
