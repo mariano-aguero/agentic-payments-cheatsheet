@@ -1,4 +1,4 @@
 User-agent: *
 Allow: /
 
-Sitemap: https://mariano-aguero.github.io/agentic-payments-cheatsheet/sitemap.xml
+Sitemap: https://justaname-id.github.io/agentic-payments-cheatsheet/sitemap.xml

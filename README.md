@@ -1,16 +1,16 @@
 # Agentic Payments Cheatsheet
 
-[![Pages](https://img.shields.io/badge/read%20it-mariano--aguero.github.io-2e5e4e)](https://mariano-aguero.github.io/agentic-payments-cheatsheet/)
+[![Pages](https://img.shields.io/badge/read%20it-justaname--id.github.io-2e5e4e)](https://justaname-id.github.io/agentic-payments-cheatsheet/)
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](LICENSE)
 
 A one-page field guide to how AI agents pay for things on the open web: the x402 protocol, payment facilitators, EIP-3009 and Permit2 settlement, CAIP-2 networks, and the AP2 mandate layer above it all.
 
-**Read it here: [mariano-aguero.github.io/agentic-payments-cheatsheet](https://mariano-aguero.github.io/agentic-payments-cheatsheet/)**
+**Read it here: [justaname-id.github.io/agentic-payments-cheatsheet](https://justaname-id.github.io/agentic-payments-cheatsheet/)**
 
 The guide has two parts:
 
-1. **[The protocol](https://mariano-aguero.github.io/agentic-payments-cheatsheet/)**: the x402 flow, stack, roles, headers, schemes, networks, settlement and mandates
-2. **[Production integration](https://mariano-aguero.github.io/agentic-payments-cheatsheet/integration.html)**: wiring payments into an existing agent backend, buyer and seller side, with failure semantics, custody, idempotency and observability
+1. **[The protocol](https://justaname-id.github.io/agentic-payments-cheatsheet/)**: the x402 flow, stack, roles, headers, schemes, networks, settlement and mandates
+2. **[Production integration](https://justaname-id.github.io/agentic-payments-cheatsheet/integration.html)**: wiring payments into an existing agent backend, buyer and seller side, with failure semantics, custody, idempotency and observability
 
 ## What's inside
 
@@ -21,15 +21,9 @@ The guide has two parts:
 - EIP-3009 vs Permit2, and why buyers never pay gas
 - Hosted vs self-hosted facilitators and their trust model
 - AP2 mandates in two paragraphs
-- The package ecosystem plus minimum viable seller and buyer snippets
+- The package ecosystem, side by side
 
 Everything is verified against the x402 v2 packages. If something drifts out of date, corrections via PR are welcome.
-
-## Related
-
-- [arbitrum-agent-payments](https://github.com/mariano-aguero/arbitrum-agent-payments): runnable end-to-end kit (Claude agent buying from an x402 API on Arbitrum Sepolia)
-- [`@mariano-aguero/x402-self-facilitator`](https://www.npmjs.com/package/@mariano-aguero/x402-self-facilitator)
-- [`@mariano-aguero/anthropic-x402-tools`](https://www.npmjs.com/package/@mariano-aguero/anthropic-x402-tools)
 
 ## License
 

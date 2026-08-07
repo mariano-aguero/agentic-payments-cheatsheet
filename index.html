@@ -8,23 +8,23 @@
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Zilla+Slab:wght@500;600;700&family=Public+Sans:wght@400;500;600&family=IBM+Plex+Mono:wght@400;500;600&display=swap" rel="stylesheet">
-<link rel="canonical" href="https://mariano-aguero.github.io/agentic-payments-cheatsheet/">
+<link rel="canonical" href="https://justaname-id.github.io/agentic-payments-cheatsheet/">
 <meta name="robots" content="index, follow">
-<meta name="author" content="Mariano Aguero">
+<meta name="author" content="JustaName">
 <meta name="theme-color" content="#f2f4ec">
 <meta property="og:type" content="article">
 <meta property="og:site_name" content="Agentic Payments Cheatsheet">
 <meta property="og:title" content="Agentic Payments Cheatsheet: x402, facilitators, EIP-3009 and AP2">
 <meta property="og:description" content="A one-page field guide to the AI agent payment stack: the x402 protocol, payment facilitators, EIP-3009 and Permit2 settlement, CAIP-2 networks, and AP2 mandates.">
-<meta property="og:url" content="https://mariano-aguero.github.io/agentic-payments-cheatsheet/">
-<meta property="og:image" content="https://mariano-aguero.github.io/agentic-payments-cheatsheet/og-image.png">
+<meta property="og:url" content="https://justaname-id.github.io/agentic-payments-cheatsheet/">
+<meta property="og:image" content="https://justaname-id.github.io/agentic-payments-cheatsheet/og-image.png">
 <meta property="og:image:width" content="1200">
 <meta property="og:image:height" content="630">
 <meta property="og:locale" content="en_US">
 <meta name="twitter:card" content="summary_large_image">
 <meta name="twitter:title" content="Agentic Payments Cheatsheet: x402, facilitators, EIP-3009 and AP2">
 <meta name="twitter:description" content="A one-page field guide to the AI agent payment stack: the x402 protocol, payment facilitators, EIP-3009 and Permit2 settlement, CAIP-2 networks, and AP2 mandates.">
-<meta name="twitter:image" content="https://mariano-aguero.github.io/agentic-payments-cheatsheet/og-image.png">
+<meta name="twitter:image" content="https://justaname-id.github.io/agentic-payments-cheatsheet/og-image.png">
 <link rel="icon" href="favicon.svg" type="image/svg+xml">
 <script type="application/ld+json">
 {
@@ -32,9 +32,9 @@
   "@type": "TechArticle",
   "headline": "Agentic Payments Cheatsheet: x402, facilitators, EIP-3009 and AP2",
   "description": "A one-page field guide to the AI agent payment stack: the x402 protocol, payment facilitators, EIP-3009 and Permit2 settlement, CAIP-2 networks, and AP2 mandates.",
-  "author": { "@type": "Person", "name": "Mariano Aguero", "url": "https://github.com/mariano-aguero" },
-  "url": "https://mariano-aguero.github.io/agentic-payments-cheatsheet/",
-  "image": "https://mariano-aguero.github.io/agentic-payments-cheatsheet/og-image.png",
+  "author": { "@type": "Organization", "name": "JustaName", "url": "https://github.com/JustaName-id" },
+  "url": "https://justaname-id.github.io/agentic-payments-cheatsheet/",
+  "image": "https://justaname-id.github.io/agentic-payments-cheatsheet/og-image.png",
   "license": "https://opensource.org/licenses/MIT",
   "keywords": "x402, agentic payments, EIP-3009, USDC, facilitator, AP2, AI agents, Arbitrum"
 }
@@ -62,7 +62,6 @@
       <a href="#facilitators">Facilitators</a>
       <a href="#mandates">Mandates</a>
       <a href="#packages">Packages</a>
-      <a href="#snippets">Snippets</a>
       <a href="#resources">Resources</a>
       <a href="integration.html"><strong>Part two: integration guide</strong></a>
     </nav>
@@ -338,7 +337,7 @@
           <li>Works on any EVM chain viem knows</li>
           <li>No external dependency, no coverage gaps</li>
           <li>Your settlement wallet needs native gas</li>
-          <li>Prebuilt: <a href="https://www.npmjs.com/package/@mariano-aguero/x402-self-facilitator"><code>@mariano-aguero/x402-self-facilitator</code></a></li>
+          <li>Build it on <code>@x402/core</code>'s facilitator base</li>
         </ul>
       </div>
     </div>
@@ -366,54 +365,15 @@
         <tr><td><code>@x402/fetch</code></td><td>client</td><td><code>wrapFetchWithPayment</code>: a fetch that pays 402 challenges automatically</td></tr>
         <tr><td><code>@x402/hono</code>, <code>@x402/express</code>, <code>@x402/next</code></td><td>server</td><td>Official middleware adapters: price routes, challenge, verify, settle</td></tr>
         <tr><td><code>@x402/svm</code></td><td>all</td><td>Solana implementation of the same protocol</td></tr>
-        <tr><td><a href="https://www.npmjs.com/package/@mariano-aguero/x402-self-facilitator"><code>@mariano-aguero/x402-self-facilitator</code></a></td><td>server</td><td>In-process facilitator for any EVM chain; no external service, gasless buyers</td></tr>
-        <tr><td><a href="https://www.npmjs.com/package/@mariano-aguero/anthropic-x402-tools"><code>@mariano-aguero/anthropic-x402-tools</code></a></td><td>client</td><td>Paying <code>fetch_url</code> and <code>check_balance</code> tools for Claude agents (Anthropic SDK tool runner)</td></tr>
       </tbody>
     </table></div>
-  </div>
-</section>
-
-<section id="snippets">
-  <div class="wrap">
-    <div class="entry-head"><span class="no">11</span><h2>Minimum viable seller and buyer</h2></div>
-    <p><strong>Seller</strong>: a Hono route priced at one cent, settling on Arbitrum with a self-hosted facilitator.</p>
-    <pre class="snippet"><span class="kw">import</span> { paymentMiddlewareFromConfig } <span class="kw">from</span> <span class="st">"@x402/hono"</span>;
-<span class="kw">import</span> { ExactEvmScheme } <span class="kw">from</span> <span class="st">"@x402/evm/exact/server"</span>;
-<span class="kw">import</span> { createSelfFacilitator } <span class="kw">from</span> <span class="st">"@mariano-aguero/x402-self-facilitator"</span>;
-
-<span class="kw">const</span> facilitator = createSelfFacilitator({ chain: arbitrum, account: sellerAccount });
-
-app.use(<span class="st">"/api/insight"</span>, paymentMiddlewareFromConfig(
-  { <span class="st">"GET /api/insight"</span>: { accepts: {
-      scheme: <span class="st">"exact"</span>, network: <span class="st">"eip155:42161"</span>,
-      payTo: sellerAccount.address, price: <span class="st">"$0.01"</span> } } },
-  facilitator,
-  [{ network: <span class="st">"eip155:42161"</span>, server: <span class="kw">new</span> ExactEvmScheme() }],
-));</pre>
-    <p><strong>Buyer</strong>: a Claude agent whose fetch tool pays challenges from its own wallet.</p>
-    <pre class="snippet"><span class="kw">import</span> Anthropic <span class="kw">from</span> <span class="st">"@anthropic-ai/sdk"</span>;
-<span class="kw">import</span> { createX402Tools } <span class="kw">from</span> <span class="st">"@mariano-aguero/anthropic-x402-tools"</span>;
-
-<span class="kw">const</span> { tools, payments } = createX402Tools({
-  account: agentAccount,           <span class="cm">// holds USDC, never needs gas</span>
-  chain: arbitrum,
-  token: { address: <span class="st">"0xaf88d065e77c8cC2239327C5EDb3A432268e5831"</span> },
-  apiBase: <span class="st">"https://api.example.com"</span>,
-});
-
-<span class="kw">const</span> message = <span class="kw">await</span> <span class="kw">new</span> Anthropic().beta.messages.toolRunner({
-  model: <span class="st">"claude-opus-5"</span>, max_tokens: <span class="kw">16000</span>, tools,
-  messages: [{ role: <span class="st">"user"</span>, content: <span class="st">"Buy me one premium insight."</span> }],
-});
-<span class="cm">// payments[] now holds { url, amount, txHash } per settled payment</span></pre>
-    <p class="note">Both snippets are condensed from a runnable end-to-end kit: <a href="https://github.com/mariano-aguero/arbitrum-agent-payments">arbitrum-agent-payments</a> (one command, real testnet settlement).</p>
     <div class="callout"><b>Running this in production?</b> Part two of this guide covers the integration work the protocol pages skip: agent loop budgets, paying-tool safety rails, the custody ladder, the seller guard pipeline, failure semantics for autonomous retriers, and the hardening checklist. <a href="integration.html">Read the production integration guide</a>.</div>
   </div>
 </section>
 
 <section id="resources">
   <div class="wrap">
-    <div class="entry-head"><span class="no">12</span><h2>Resources</h2></div>
+    <div class="entry-head"><span class="no">11</span><h2>Resources</h2></div>
     <div class="table-scroll"><table>
       <thead><tr><th>What</th><th>Where</th></tr></thead>
       <tbody>
@@ -424,7 +384,6 @@ app.use(<span class="st">"/api/insight"</span>, paymentMiddlewareFromConfig(
         <tr><td>AP2 (Agent Payments Protocol)</td><td><a href="https://ap2-protocol.org">ap2-protocol.org</a></td></tr>
         <tr><td>Hosted facilitator coverage</td><td><a href="https://x402.org/facilitator/supported">x402.org/facilitator/supported</a></td></tr>
         <tr><td>Test USDC faucet</td><td><a href="https://faucet.circle.com">faucet.circle.com</a></td></tr>
-        <tr><td>Runnable end-to-end example</td><td><a href="https://github.com/mariano-aguero/arbitrum-agent-payments">arbitrum-agent-payments</a></td></tr>
       </tbody>
     </table></div>
   </div>
@@ -432,8 +391,8 @@ app.use(<span class="st">"/api/insight"</span>, paymentMiddlewareFromConfig(
 
 <footer>
   <div class="wrap" style="display:flex; justify-content:space-between; gap:16px; flex-wrap:wrap;">
-    <span>MIT · <a href="https://github.com/mariano-aguero/agentic-payments-cheatsheet">source on GitHub</a></span>
-    <span>by <a href="https://github.com/mariano-aguero">mariano-aguero</a> · corrections welcome via PR</span>
+    <span>MIT · <a href="https://github.com/JustaName-id/agentic-payments-cheatsheet">source on GitHub</a></span>
+    <span>by <a href="https://github.com/JustaName-id">JustaName</a> · corrections welcome via PR</span>
   </div>
 </footer>
 
